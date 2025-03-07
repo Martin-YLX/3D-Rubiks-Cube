@@ -1,0 +1,4 @@
+- **Project Name**: 3D Rubik's Cube
+- **Completion Time**: 2025
+- **Course**: Introduction to Intelligent Graphics and Images
+- **Software Used**: CLion 
