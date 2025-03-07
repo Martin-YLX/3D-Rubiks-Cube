@@ -17,6 +17,9 @@ include_directories(
 
 set(SOURCES
         src/main.cpp
+        src/Cube.cpp
+        src/Camera.cpp
+        src/Shader.cpp
         src/glad.c
 )
 
@@ -24,6 +27,6 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} glfw OpenGL::GL glm::glm)
 
-# 将着色器文件复制到构建目录，确保运行时能加载
+# 将着色器文件复制到构建目录，确保运行时可加载
 file(COPY ${CMAKE_SOURCE_DIR}/src/shader.vert DESTINATION ${CMAKE_BINARY_DIR})
 file(COPY ${CMAKE_SOURCE_DIR}/src/shader.frag DESTINATION ${CMAKE_BINARY_DIR})
