@@ -1,4 +1,0 @@
-/Users/ylx/Documents/Rubik‘s Cube/build/CMakeFiles/glad.dir
-/Users/ylx/Documents/Rubik‘s Cube/build/CMakeFiles/RubiksCube.dir
-/Users/ylx/Documents/Rubik‘s Cube/build/CMakeFiles/edit_cache.dir
-/Users/ylx/Documents/Rubik‘s Cube/build/CMakeFiles/rebuild_cache.dir
