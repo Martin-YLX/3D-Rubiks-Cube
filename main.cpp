@@ -69,53 +69,47 @@ void initCubeColors() {
     }
 }
 
-// 辅助函数：旋转一个小立方体的面 (已修正)
+// 辅助函数：旋转一个小立方体的面 (恢复 6e3b478 并修正错误部分)
 void rotateSmallCubeFaces(SmallCube& cube, char axis, bool clockwise) {
     CubeFace tempFaces[6];
-    // tempFaces 存储旋转前的状态
     for(int i=0; i<6; ++i) tempFaces[i] = cube.faces[i];
+    // 0:左, 1:右, 2:下, 3:上, 4:前, 5:后
 
-    if (axis == 'y') { // U/D rotations (around Y axis)
-        if (clockwise) { // Physical CW rotation around +Y
-            cube.faces[0] = tempFaces[4]; // New Left <- Old Front
-            cube.faces[1] = tempFaces[5]; // New Right <- Old Back
-            cube.faces[4] = tempFaces[1]; // New Front <- Old Right
-            cube.faces[5] = tempFaces[0]; // New Back <- Old Left
-            // Up(3) and Down(2) stay the same relative to the cubelet
-        } else { // Physical CCW rotation around +Y
-            cube.faces[0] = tempFaces[5]; // New Left <- Old Back
-            cube.faces[1] = tempFaces[4]; // New Right <- Old Front
-            cube.faces[4] = tempFaces[0]; // New Front <- Old Left
-            cube.faces[5] = tempFaces[1]; // New Back <- Old Right
-            // Up(3) and Down(2) stay the same relative to the cubelet
+    if (axis == 'y') { // U/D rotations (+Y)
+        if (clockwise) { // Physical CW +Y --> Used by U (保持原样 - OK)
+            cube.faces[0] = tempFaces[4]; // L <- F
+            cube.faces[1] = tempFaces[5]; // R <- B
+            cube.faces[4] = tempFaces[1]; // F <- R
+            cube.faces[5] = tempFaces[0]; // B <- L
+        } else { // Physical CCW +Y --> Used by D (修正这部分)
+            cube.faces[0] = tempFaces[4]; // Correct: L <- F
+            cube.faces[1] = tempFaces[5]; // Correct: R <- B
+            cube.faces[4] = tempFaces[1]; // Correct: F <- R
+            cube.faces[5] = tempFaces[0]; // Correct: B <- L
         }
-    } else if (axis == 'x') { // L/R rotations (around X axis)
-        if (clockwise) { // Physical CW rotation around +X
-            cube.faces[2] = tempFaces[5]; // New Down <- Old Back
-            cube.faces[3] = tempFaces[4]; // New Up <- Old Front
-            cube.faces[4] = tempFaces[2]; // New Front <- Old Down
-            cube.faces[5] = tempFaces[3]; // New Back <- Old Up
-            // Left(0) and Right(1) stay the same relative to the cubelet
-        } else { // Physical CCW rotation around +X
-            cube.faces[2] = tempFaces[4]; // New Down <- Old Front
-            cube.faces[3] = tempFaces[5]; // New Up <- Old Back
-            cube.faces[4] = tempFaces[3]; // New Front <- Old Up
-            cube.faces[5] = tempFaces[2]; // New Back <- Old Down
-            // Left(0) and Right(1) stay the same relative to the cubelet
-        }
-    } else if (axis == 'z') { // F/B rotations (around Z axis)
-        if (clockwise) { // Physical CW rotation around +Z
-            cube.faces[0] = tempFaces[2]; // New Left <- Old Down
-            cube.faces[1] = tempFaces[3]; // New Right <- Old Up
-            cube.faces[2] = tempFaces[1]; // New Down <- Old Right
-            cube.faces[3] = tempFaces[0]; // New Up <- Old Left
-            // Front(4) and Back(5) stay the same relative to the cubelet
-        } else { // Physical CCW rotation around +Z
-            cube.faces[0] = tempFaces[3]; // New Left <- Old Up
-            cube.faces[1] = tempFaces[2]; // New Right <- Old Down
-            cube.faces[2] = tempFaces[0]; // New Down <- Old Left
-            cube.faces[3] = tempFaces[1]; // New Up <- Old Right
-            // Front(4) and Back(5) stay the same relative to the cubelet
+    } else if (axis == 'x') { // L/R rotations (+X)
+        if (clockwise) { // Physical CW +X --> Used by R (修正这部分)
+            cube.faces[2] = tempFaces[4]; // Correct: D <- F
+            cube.faces[3] = tempFaces[5]; // Correct: U <- B
+            cube.faces[4] = tempFaces[3]; // Correct: F <- U
+            cube.faces[5] = tempFaces[2]; // Correct: B <- D
+        } else { // Physical CCW +X --> Used by L (保持原样 - OK)
+            cube.faces[2] = tempFaces[4]; // D <- F
+            cube.faces[3] = tempFaces[5]; // U <- B
+            cube.faces[4] = tempFaces[3]; // F <- U
+            cube.faces[5] = tempFaces[2]; // B <- D
+        }    
+    } else if (axis == 'z') { // F/B rotations (+Z)
+        if (clockwise) { // Physical CW +Z --> Used by F (保持原样 - OK)
+            cube.faces[0] = tempFaces[2]; // L <- D
+            cube.faces[1] = tempFaces[3]; // R <- U
+            cube.faces[2] = tempFaces[1]; // D <- R
+            cube.faces[3] = tempFaces[0]; // U <- L
+        } else { // Physical CCW +Z --> Used by B (修正这部分)
+            cube.faces[0] = tempFaces[2]; // Correct: L <- D
+            cube.faces[1] = tempFaces[3]; // Correct: R <- U
+            cube.faces[2] = tempFaces[1]; // Correct: D <- R
+            cube.faces[3] = tempFaces[0]; // Correct: U <- L
         }
     }
 }
@@ -145,17 +139,15 @@ void rotateFace(char face, bool clockwise) {
         case 'd': // 下层面 (Y轴)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    // 注意：D旋转相对于U旋转是反方向的物理旋转，但我们希望顺时针按键对应顺时针观察效果
                     if (clockwise)
-                        temp[j][2-i] = cube[i][0][j]; // 逻辑同U
+                        temp[j][2-i] = cube[i][0][j];
                     else
-                        temp[2-j][i] = cube[i][0][j]; // 逻辑同U
+                        temp[2-j][i] = cube[i][0][j];
                 }
             }
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     cube[i][0][j] = temp[i][j];
-                    // 旋转方向与观察方向一致，但轴向相反，所以传入 !clockwise
                     rotateSmallCubeFaces(cube[i][0][j], 'y', !clockwise);
                 }
             }
@@ -173,7 +165,6 @@ void rotateFace(char face, bool clockwise) {
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     cube[0][i][j] = temp[i][j];
-                     // 旋转方向与观察方向一致，但轴向相反，所以传入 !clockwise
                     rotateSmallCubeFaces(cube[0][i][j], 'x', !clockwise);
                 }
             }
@@ -225,7 +216,6 @@ void rotateFace(char face, bool clockwise) {
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     cube[i][j][2] = temp[i][j];
-                     // 旋转方向与观察方向一致，但轴向相反，所以传入 !clockwise
                     rotateSmallCubeFaces(cube[i][j][2], 'z', !clockwise);
                 }
             }
