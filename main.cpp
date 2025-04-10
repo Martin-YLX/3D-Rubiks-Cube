@@ -10,146 +10,230 @@
 #include <sstream>
 
 // 魔方状态
-std::vector<std::vector<std::vector<glm::vec3>>> cubeColors(3, std::vector<std::vector<glm::vec3>>(3, std::vector<glm::vec3>(3)));
+struct CubeFace {
+    glm::vec3 color;
+    bool visible;
+};
+
+struct SmallCube {
+    CubeFace faces[6];  // 0:左, 1:右, 2:下, 3:上, 4:前, 5:后
+};
+
+std::vector<std::vector<std::vector<SmallCube>>> cube(3, std::vector<std::vector<SmallCube>>(3, std::vector<SmallCube>(3)));
 bool keyPressed[6] = {false};  // 用于跟踪按键状态
 
 // 初始化魔方颜色
 void initCubeColors() {
-    // 初始化每个面的颜色
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
             for (int k = 0; k < 3; k++) {
-                // 重置所有颜色为黑色
-                cubeColors[i][j][k] = glm::vec3(0.0f, 0.0f, 0.0f);
+                // 初始化所有面为不可见
+                for (int f = 0; f < 6; f++) {
+                    cube[i][j][k].faces[f].visible = false;
+                    cube[i][j][k].faces[f].color = glm::vec3(0.0f, 0.0f, 0.0f);
+                }
                 
-                // 只设置最外层小立方体的颜色
-                // 左面（红色）- 只设置i=0的最外层
-                if (i == 0) 
-                    cubeColors[i][j][k] = glm::vec3(1.0f, 0.0f, 0.0f);
-                // 右面（橙色）- 只设置i=2的最外层
-                else if (i == 2)
-                    cubeColors[i][j][k] = glm::vec3(1.0f, 0.5f, 0.0f);
-                // 下面（蓝色）- 只设置j=0的最外层
-                else if (j == 0)
-                    cubeColors[i][j][k] = glm::vec3(0.0f, 0.0f, 1.0f);
-                // 上面（绿色）- 只设置j=2的最外层
-                else if (j == 2)
-                    cubeColors[i][j][k] = glm::vec3(0.0f, 1.0f, 0.0f);
-                // 前面（白色）- 只设置k=0的最外层
-                else if (k == 0)
-                    cubeColors[i][j][k] = glm::vec3(1.0f, 1.0f, 1.0f);
-                // 后面（黄色）- 只设置k=2的最外层
-                else if (k == 2)
-                    cubeColors[i][j][k] = glm::vec3(1.0f, 0.9f, 0.0f);
+                // 设置可见面的颜色
+                // 左面
+                if (i == 0) {
+                    cube[i][j][k].faces[0].visible = true;
+                    cube[i][j][k].faces[0].color = glm::vec3(1.0f, 0.0f, 0.0f);  // 红色
+                }
+                // 右面
+                if (i == 2) {
+                    cube[i][j][k].faces[1].visible = true;
+                    cube[i][j][k].faces[1].color = glm::vec3(1.0f, 0.5f, 0.0f);  // 橙色
+                }
+                // 下面
+                if (j == 0) {
+                    cube[i][j][k].faces[2].visible = true;
+                    cube[i][j][k].faces[2].color = glm::vec3(0.0f, 0.0f, 1.0f);  // 蓝色
+                }
+                // 上面
+                if (j == 2) {
+                    cube[i][j][k].faces[3].visible = true;
+                    cube[i][j][k].faces[3].color = glm::vec3(0.0f, 1.0f, 0.0f);  // 绿色
+                }
+                // 前面
+                if (k == 0) {
+                    cube[i][j][k].faces[4].visible = true;
+                    cube[i][j][k].faces[4].color = glm::vec3(1.0f, 1.0f, 1.0f);  // 白色
+                }
+                // 后面
+                if (k == 2) {
+                    cube[i][j][k].faces[5].visible = true;
+                    cube[i][j][k].faces[5].color = glm::vec3(1.0f, 0.9f, 0.0f);  // 黄色
+                }
             }
+        }
+    }
+}
+
+// 辅助函数：旋转一个小立方体的面 (已修正)
+void rotateSmallCubeFaces(SmallCube& cube, char axis, bool clockwise) {
+    CubeFace tempFaces[6];
+    // tempFaces 存储旋转前的状态
+    for(int i=0; i<6; ++i) tempFaces[i] = cube.faces[i];
+
+    if (axis == 'y') { // U/D rotations (around Y axis)
+        if (clockwise) { // Physical CW rotation around +Y
+            cube.faces[0] = tempFaces[4]; // New Left <- Old Front
+            cube.faces[1] = tempFaces[5]; // New Right <- Old Back
+            cube.faces[4] = tempFaces[1]; // New Front <- Old Right
+            cube.faces[5] = tempFaces[0]; // New Back <- Old Left
+            // Up(3) and Down(2) stay the same relative to the cubelet
+        } else { // Physical CCW rotation around +Y
+            cube.faces[0] = tempFaces[5]; // New Left <- Old Back
+            cube.faces[1] = tempFaces[4]; // New Right <- Old Front
+            cube.faces[4] = tempFaces[0]; // New Front <- Old Left
+            cube.faces[5] = tempFaces[1]; // New Back <- Old Right
+            // Up(3) and Down(2) stay the same relative to the cubelet
+        }
+    } else if (axis == 'x') { // L/R rotations (around X axis)
+        if (clockwise) { // Physical CW rotation around +X
+            cube.faces[2] = tempFaces[5]; // New Down <- Old Back
+            cube.faces[3] = tempFaces[4]; // New Up <- Old Front
+            cube.faces[4] = tempFaces[2]; // New Front <- Old Down
+            cube.faces[5] = tempFaces[3]; // New Back <- Old Up
+            // Left(0) and Right(1) stay the same relative to the cubelet
+        } else { // Physical CCW rotation around +X
+            cube.faces[2] = tempFaces[4]; // New Down <- Old Front
+            cube.faces[3] = tempFaces[5]; // New Up <- Old Back
+            cube.faces[4] = tempFaces[3]; // New Front <- Old Up
+            cube.faces[5] = tempFaces[2]; // New Back <- Old Down
+            // Left(0) and Right(1) stay the same relative to the cubelet
+        }
+    } else if (axis == 'z') { // F/B rotations (around Z axis)
+        if (clockwise) { // Physical CW rotation around +Z
+            cube.faces[0] = tempFaces[2]; // New Left <- Old Down
+            cube.faces[1] = tempFaces[3]; // New Right <- Old Up
+            cube.faces[2] = tempFaces[1]; // New Down <- Old Right
+            cube.faces[3] = tempFaces[0]; // New Up <- Old Left
+            // Front(4) and Back(5) stay the same relative to the cubelet
+        } else { // Physical CCW rotation around +Z
+            cube.faces[0] = tempFaces[3]; // New Left <- Old Up
+            cube.faces[1] = tempFaces[2]; // New Right <- Old Down
+            cube.faces[2] = tempFaces[0]; // New Down <- Old Left
+            cube.faces[3] = tempFaces[1]; // New Up <- Old Right
+            // Front(4) and Back(5) stay the same relative to the cubelet
         }
     }
 }
 
 // 旋转魔方的面
 void rotateFace(char face, bool clockwise) {
-    std::vector<std::vector<glm::vec3>> temp(3, std::vector<glm::vec3>(3));
+    std::vector<std::vector<SmallCube>> temp(3, std::vector<SmallCube>(3));
     
     switch (face) {
-        case 'u': // 上层面
+        case 'u': // 上层面 (Y轴)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (clockwise)
-                        temp[j][2-i] = cubeColors[i][2][j];
+                        temp[j][2-i] = cube[i][2][j];
                     else
-                        temp[2-j][i] = cubeColors[i][2][j];
+                        temp[2-j][i] = cube[i][2][j];
                 }
             }
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    cubeColors[i][2][j] = temp[i][j];
+                    cube[i][2][j] = temp[i][j];
+                    rotateSmallCubeFaces(cube[i][2][j], 'y', clockwise);
                 }
             }
             break;
             
-        case 'd': // 下层面
+        case 'd': // 下层面 (Y轴)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
+                    // 注意：D旋转相对于U旋转是反方向的物理旋转，但我们希望顺时针按键对应顺时针观察效果
                     if (clockwise)
-                        temp[j][2-i] = cubeColors[i][0][j];
+                        temp[j][2-i] = cube[i][0][j]; // 逻辑同U
                     else
-                        temp[2-j][i] = cubeColors[i][0][j];
+                        temp[2-j][i] = cube[i][0][j]; // 逻辑同U
                 }
             }
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    cubeColors[i][0][j] = temp[i][j];
+                    cube[i][0][j] = temp[i][j];
+                    // 旋转方向与观察方向一致，但轴向相反，所以传入 !clockwise
+                    rotateSmallCubeFaces(cube[i][0][j], 'y', !clockwise);
                 }
             }
             break;
             
-        case 'l': // 左层面
+        case 'l': // 左层面 (X轴)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (clockwise)
-                        temp[j][2-i] = cubeColors[0][i][j];
+                        temp[j][2-i] = cube[0][i][j];
                     else
-                        temp[2-j][i] = cubeColors[0][i][j];
+                        temp[2-j][i] = cube[0][i][j];
                 }
             }
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    cubeColors[0][i][j] = temp[i][j];
+                    cube[0][i][j] = temp[i][j];
+                     // 旋转方向与观察方向一致，但轴向相反，所以传入 !clockwise
+                    rotateSmallCubeFaces(cube[0][i][j], 'x', !clockwise);
                 }
             }
             break;
             
-        case 'r': // 右层面
+        case 'r': // 右层面 (X轴)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (clockwise)
-                        temp[j][2-i] = cubeColors[2][i][j];
+                        temp[j][2-i] = cube[2][i][j];
                     else
-                        temp[2-j][i] = cubeColors[2][i][j];
+                        temp[2-j][i] = cube[2][i][j];
                 }
             }
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    cubeColors[2][i][j] = temp[i][j];
+                    cube[2][i][j] = temp[i][j];
+                    rotateSmallCubeFaces(cube[2][i][j], 'x', clockwise);
                 }
             }
             break;
             
-        case 'f': // 前层面
+        case 'f': // 前层面 (Z轴)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (clockwise)
-                        temp[j][2-i] = cubeColors[i][j][0];
+                        temp[j][2-i] = cube[i][j][0];
                     else
-                        temp[2-j][i] = cubeColors[i][j][0];
+                        temp[2-j][i] = cube[i][j][0];
                 }
             }
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    cubeColors[i][j][0] = temp[i][j];
+                    cube[i][j][0] = temp[i][j];
+                    rotateSmallCubeFaces(cube[i][j][0], 'z', clockwise);
                 }
             }
             break;
             
-        case 'b': // 后层面
+        case 'b': // 后层面 (Z轴)
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
                     if (clockwise)
-                        temp[j][2-i] = cubeColors[i][j][2];
+                        temp[j][2-i] = cube[i][j][2];
                     else
-                        temp[2-j][i] = cubeColors[i][j][2];
+                        temp[2-j][i] = cube[i][j][2];
                 }
             }
             for (int i = 0; i < 3; i++) {
                 for (int j = 0; j < 3; j++) {
-                    cubeColors[i][j][2] = temp[i][j];
+                    cube[i][j][2] = temp[i][j];
+                     // 旋转方向与观察方向一致，但轴向相反，所以传入 !clockwise
+                    rotateSmallCubeFaces(cube[i][j][2], 'z', !clockwise);
                 }
             }
             break;
     }
 }
 
-// 生成单个小立方体的顶点数据
+// 生成小立方体的顶点数据
 void generateCubeVertices(float x, float y, float z, std::vector<float>& vertices, std::vector<unsigned int>& indices) {
     float size = 0.3f;      // 小立方体的大小
     float offset = 0.01f;   // 小立方体之间的间距
@@ -161,31 +245,12 @@ void generateCubeVertices(float x, float y, float z, std::vector<float>& vertice
     
     // 获取小立方体的颜色
     glm::vec3 colors[6];
-    
-    // 根据小立方体的位置确定每个面的颜色
-    // 左面
-    if (x == 0) colors[0] = cubeColors[0][y][z];  // 使用cubeColors中的颜色
-    else colors[0] = glm::vec3(0.0f, 0.0f, 0.0f);  // 黑色
-    
-    // 右面
-    if (x == 2) colors[1] = cubeColors[2][y][z];  // 使用cubeColors中的颜色
-    else colors[1] = glm::vec3(0.0f, 0.0f, 0.0f);  // 黑色
-    
-    // 下面
-    if (y == 0) colors[2] = cubeColors[x][0][z];  // 使用cubeColors中的颜色
-    else colors[2] = glm::vec3(0.0f, 0.0f, 0.0f);  // 黑色
-    
-    // 上面
-    if (y == 2) colors[3] = cubeColors[x][2][z];  // 使用cubeColors中的颜色
-    else colors[3] = glm::vec3(0.0f, 0.0f, 0.0f);  // 黑色
-    
-    // 前面
-    if (z == 0) colors[4] = cubeColors[x][y][0];  // 使用cubeColors中的颜色
-    else colors[4] = glm::vec3(0.0f, 0.0f, 0.0f);  // 黑色
-    
-    // 后面
-    if (z == 2) colors[5] = cubeColors[x][y][2];  // 使用cubeColors中的颜色
-    else colors[5] = glm::vec3(0.0f, 0.0f, 0.0f);  // 黑色
+    for (int f = 0; f < 6; f++) {
+        if (cube[x][y][z].faces[f].visible)
+            colors[f] = cube[x][y][z].faces[f].color;
+        else
+            colors[f] = glm::vec3(0.0f, 0.0f, 0.0f);  // 黑色
+    }
     
     // 生成顶点数据（包含位置和颜色）
     float cubeVertices[] = {
